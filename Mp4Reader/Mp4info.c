@@ -4,20 +4,26 @@
 #include<string.h>
 #include"box.h"
 
-int main()
+#define FILEPATH "../resource/fox.mp4"
+
+int main(int argc, char* argv[])
 {
     //read size - read type - read data
     FILE* fp;
-    Box usingBox;
     Box* mp4Box; 
-    Box* tmp, *tmp2;
 
-    if((fp = fopen(FILEPATH, "rb")) == NULL) 
+    if(argc != 2) {printf("Usage: %s filename\n", argv[0]); return -1;}
+
+    if((fp = fopen(argv[1], "rb")) == NULL) 
     {
-        exit(-1);
-        printf("cant open");
+        printf("cant open file: %s\n", argv[1]);
+        return -1;
     }
-    printf("open !!\n");
+    else
+    {
+        // printf("open !!\n");
+    }
+    
     
     fseek(fp, 0L, SEEK_END);
     mp4Box = InitBox("mp4b", ftell(fp));
@@ -25,39 +31,17 @@ int main()
 
     ReadInfoIntoBox(fp, mp4Box);
     ReadDataIntoBox(fp, mp4Box);
-    printf("===========================\n");
-    // PrintBox(mp4Box);
-    printf("===========================\n");
 
-    tmp = InitBox("trak", 0);
-    FindBoxLink("trak", mp4Box, tmp);
-
-    Box* stbl = tmp->inBox->inBox->nextBox->nextBox->inBox->nextBox->nextBox->inBox->nextBox->nextBox;
-    // PrintBox(stbl);
-
-    Box* stsd = stbl->inBox;
-    Box* stts = stsd->nextBox;
-    Box* stss = stts->nextBox;
-    Box* ctts = stss->nextBox;
-    Box* stsc = ctts->nextBox;
-    Box* stsz = stsc->nextBox;
-    Box* stco = stsz->nextBox;
-    // PrintBox(stsz);
-    DataPareser(fp, "stsd", stsd);
     PrintBox(mp4Box);
-
-    // FILE* fp_wr = fopen("out.sample", "w");
-    // fseek(fp, 0x1fee1, SEEK_SET);
-    // void* tmpf = (void*)malloc(19766L);
-    // fread(tmpf, 19766L, 1, fp);
-    // fwrite(tmpf, 19766L, 1, fp_wr);
-    // free(tmpf);
 
     fclose(fp);
     DeleteBox(mp4Box);
 
     return 0;
 }
+
+
+
 void ReadDataIntoBox0(FILE* fp, Box* box)
 {
     Data* data;

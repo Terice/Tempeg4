@@ -5,9 +5,6 @@
 #include<string.h>
 #include"box.h"
 
-#define FILEPATH "../resource/fox.mp4"
-// #define FILEPATH "/media/ice/Data/mms prodecter/0001.MP4"
-// #define FILEPATH "/media/ice/Data/mms prodecter/ADN-184@18P2P.mp4"
  
 typedef unsigned long int uint64;
 typedef unsigned int uint32;
