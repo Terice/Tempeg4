@@ -2,27 +2,26 @@
 #define BOX_H_
 #include<stdio.h>
 
-
 typedef struct FullBoxData
-    {
-        unsigned char version;
-        unsigned char flags[3];
-        void* data;
-    }Data;
+{
+    unsigned char version;
+    unsigned char flags[3];
+    void* data;
+}Data;
 typedef struct box Box;
 struct box
 {
 
     char name[4];
-    unsigned long int startPos;
+    unsigned long int pos_start;
     unsigned long int size;
 
-    char rank;
+    char depth;
     Data* data;
 
-    Box* nextBox;
     Box* beforeBox;
-    Box* inBox;
+    Box* r_broth;
+    Box* l_child;
     Box* outBox;
 
 };
@@ -37,19 +36,15 @@ Box* InsertExistBox(Box* box, Box* boxToInsert);
 //"O2I""B2A"
 void ConnectTwoBox(Box* b1, Box* b2, char* mode);
 
-void PrintBoxData(Box* box);
 void PrintBox(Box* box);
 //find box with its name in a big box
 void FindBox(char* name, Box* box, Box* result);
-Box* FindBox0(char* name, Box* box);
 Box* FindBoxLink(char* name, Box* box, Box* boxToReturn);
 
 //find the last box in the "box"
 Box* FindLastBox(Box* box);
 Box* FindWrapBoxCanUse(Box* box);
 
-Data* InitBoxData();
-void DeleteBoxData(Data* data);
 // void ErgodicOperation(void (*OperationFn)(Box*), Box* boxToErgodic);
 
 #endif

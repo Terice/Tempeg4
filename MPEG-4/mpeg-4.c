@@ -1,57 +1,18 @@
-#include"Mp4info.h"
+#include"mpeg-4.h"
 #include<stdio.h>
 #include<stdlib.h>
 #include<string.h>
 #include"box.h"
 
-#define FILEPATH "../resource/fox.mp4"
-
-int main(int argc, char* argv[])
-{
-    //read size - read type - read data
-    FILE* fp;
-    Box* mp4Box; 
-
-    if(argc != 2) {printf("Usage: %s filename\n", argv[0]); return -1;}
-
-    if((fp = fopen(argv[1], "rb")) == NULL) 
-    {
-        printf("cant open file: %s\n", argv[1]);
-        return -1;
-    }
-    else
-    {
-        // printf("open !!\n");
-    }
-    
-    
-    fseek(fp, 0L, SEEK_END);
-    mp4Box = InitBox("mp4b", ftell(fp));
-    rewind(fp);
-
-    ReadInfoIntoBox(fp, mp4Box);
-    ReadDataIntoBox(fp, mp4Box);
-
-    PrintBox(mp4Box);
-
-    fclose(fp);
-    DeleteBox(mp4Box);
-
-    return 0;
-}
-
-
-
 void ReadDataIntoBox0(FILE* fp, Box* box)
 {
     Data* data;
+    if(box->r_broth != NULL) ReadDataIntoBox0(fp, box->r_broth);
+    if(box->l_child != NULL) ReadDataIntoBox0(fp, box->l_child);
 
-    if(box->inBox != NULL) ReadDataIntoBox0(fp, box->inBox);
-    if(box->nextBox != NULL) ReadDataIntoBox0(fp, box->nextBox);
-
-    if(box->inBox == NULL && strncmp(box->name, "mdat", 4))
+    if(box->r_broth == NULL && strncmp(box->name, "mdat", 4))
     {
-        fseek(fp, box->startPos + 8L, SEEK_SET);
+        fseek(fp, box->pos_start + 8L, SEEK_SET);
         data = (Data*)malloc(sizeof(Data));
         data->data = (unsigned char*)malloc(box->size - 12L);
         fread(&(data->version), sizeof(char), 1, fp);
@@ -69,7 +30,10 @@ void ReadDataIntoBox(FILE* fp, Box* box)
     ReadDataIntoBox0(fp, box);
     rewind(fp);
 }
-//read information into box from fp
+// read information into box from fp
+// this function is used to construct the mp4's file structure
+// fp will be rewind
+// data is in box(box must be all file, especially the size)
 void ReadInfoIntoBox(FILE* fp,  Box* rootBox)
 {
     Box * upBox, * tmp;
@@ -94,12 +58,11 @@ void ReadInfoIntoBox(FILE* fp,  Box* rootBox)
         }
         else fseek(fp, usingBox->size, SEEK_CUR);
 
-        if(ftell(fp) >= upBox->startPos + upBox->size)
+        if(ftell(fp) >= upBox->pos_start + upBox->size)
         {
             upBox = FindWrapBoxCanUse(upBox);
         }
     }
-
     DeleteBox(usingBox);
     rewind(fp);
 }
@@ -108,26 +71,31 @@ void ReadInfoIntoBox(FILE* fp,  Box* rootBox)
 //to read the basic info of the box
 int ReadBoxInfo(FILE* fp, Box* box)
 {
+    //read size - read type - read data
     unsigned char tmp[4];
 
+    // size
     if(fread(tmp, sizeof(char), 4, fp) < 4) return 0;
     box->size = (long)tmp[0] << 24 | (long)tmp[1] << 16 | (long)tmp[2] << 8 | (long)tmp[3];
+    // name
     fread(tmp, sizeof(char), 4, fp);
     strncpy(box->name, tmp, 4);
     fseek(fp, -8L, SEEK_CUR);
-    box->startPos = ftell(fp);
+    box->pos_start = ftell(fp);
 
     return 1;
 }
 
-char IsFullBox(FILE* fp, size_t boxStartPos, size_t boxSize)
+char IsFullBox(FILE* fp, size_t boxpos_start, size_t boxSize)
 {
-    if(!IsContainerBox(fp, boxStartPos, boxSize)) return 1;
+    if(!IsContainerBox(fp, boxpos_start, boxSize)) return 1;
     else return 0;
 }
-//this is to analyse whether it is a container box and return the count of contained box
-char IsContainerBox(FILE* fp, size_t boxStartPos, size_t boxSize)
-{//FILE* fp must be set at the start of box
+// this is to analyse whether it is a container box
+// return the count of contained box
+// FILE* fp must be set at the start of box
+char IsContainerBox(FILE* fp, size_t boxpos_start, size_t boxSize)
+{
     char result;
     unsigned long size;
     unsigned char tmp[4];
@@ -138,10 +106,10 @@ char IsContainerBox(FILE* fp, size_t boxStartPos, size_t boxSize)
     fread(tmp, sizeof(char), 4, fp);
     if(!strncmp(tmp, "mdat", 4)) 
     {
-        fseek(fp, boxStartPos, SEEK_SET);
+        fseek(fp, boxpos_start, SEEK_SET);
         return 0;
     }
-    while(ftell(fp) < boxStartPos + boxSize)
+    while(ftell(fp) < boxpos_start + boxSize)
     {
         fread(tmp, sizeof(char), 4, fp);
         size = (long)tmp[0] << 24 | (long)tmp[1] << 16 | (long)tmp[2] << 8 | (long)tmp[3];
@@ -150,9 +118,9 @@ char IsContainerBox(FILE* fp, size_t boxStartPos, size_t boxSize)
         result++;
         if(size == 0) {result = 0; break;}
     }
-    if(ftell(fp) != boxStartPos + boxSize || boxSize == 8L || size == 0) result = 0;
+    if(ftell(fp) != boxpos_start + boxSize || boxSize == 8L || size == 0) result = 0;
 
-    fseek(fp, boxStartPos, SEEK_SET);
+    fseek(fp, boxpos_start, SEEK_SET);
     
     return result;
 }
@@ -199,6 +167,9 @@ uint64 ChangeCharARToNumber(unsigned char* resource, size_t length)
     return result;
 }
 
+
+
+
 void DataPareser(FILE* fp, char* name, Box* box)
 {
     unsigned char entry_count[4];
@@ -212,7 +183,7 @@ void DataPareser(FILE* fp, char* name, Box* box)
         avc1* avc1Tmp = (avc1*)malloc(sizeof(avc1));
         Box* exchange;
 
-        fseek(fp, box->startPos + 12L, SEEK_SET);
+        fseek(fp, box->pos_start + 12L, SEEK_SET);
         fread(tmp, sizeof(char), 4L, fp);
         entryCount = ChangeCharARToNumber(tmp, 4);
 
@@ -224,7 +195,7 @@ void DataPareser(FILE* fp, char* name, Box* box)
         entryCount = ChangeCharARToNumber(tmp, 4);
         
         exchange = InsertExistBox(InitBox("avc1", (size_t)entryCount), box);
-        exchange->startPos = ftell(fp) - 4L;
+        exchange->pos_start = ftell(fp) - 4L;
         // PrintBox(box);
 
         fseek(fp, 4L, SEEK_CUR);
@@ -248,7 +219,7 @@ void DataPareser(FILE* fp, char* name, Box* box)
 
         fread_m(&entryCount, fp, 0, 4);
         exchange = InsertExistBox(InitBox("avcC", (size_t)entryCount), exchange);
-        exchange->startPos = ftell(fp) - 4L;
+        exchange->pos_start = ftell(fp) - 4L;
 
         fseek(fp, 4L, SEEK_CUR);
         fread_m(&avccTmp->configuration              , fp, 0, 1);
@@ -282,12 +253,12 @@ void DataPareser(FILE* fp, char* name, Box* box)
 
         // PrintBox(exchange);
 
-        // printf("%d",((avc1*)(box->inBox->data->data))->height);
+        // printf("%d",((avc1*)(box->r_broth->data->data))->height);
         
-    };
-    if(!strncmp(name, "stts", 4))
+    }
+    else if(!strncmp(name, "stts", 4))
     {
-        fseek(fp, box->startPos + 12L, SEEK_SET);
+        fseek(fp, box->pos_start + 12L, SEEK_SET);
         fread(entry_count, sizeof(char), 4L, fp);
         entryCount = ChangeCharARToNumber(entry_count, 4);
         stts* sample = (stts*)malloc(sizeof(stts)*entryCount);
@@ -300,10 +271,10 @@ void DataPareser(FILE* fp, char* name, Box* box)
             printf("sample cout: %d, sample delta: %d \n",sample[i].sample_count,sample[i].sample_delta);
         }
         box->data->data = sample;
-    };
-    if(!strncmp(name, "stss", 4))
+    }
+    else if(!strncmp(name, "stss", 4))
     {
-        fseek(fp, box->startPos + 12L, SEEK_SET);
+        fseek(fp, box->pos_start + 12L, SEEK_SET);
         fread(entry_count, sizeof(char), 4, fp);
         for (size_t i = 0; i < 4; i++)
         {
@@ -322,10 +293,10 @@ void DataPareser(FILE* fp, char* name, Box* box)
         }
 
         box->data->data = sample;
-    };
-    if(!strncmp(name, "ctts", 4))
+    }
+    else if(!strncmp(name, "ctts", 4))
     {
-        fseek(fp, box->startPos + 12L, SEEK_SET);
+        fseek(fp, box->pos_start + 12L, SEEK_SET);
         fread(entry_count, sizeof(char), 4, fp);
         entryCount = ChangeCharARToNumber(entry_count, 4);
 
@@ -345,9 +316,9 @@ void DataPareser(FILE* fp, char* name, Box* box)
         
 
     }
-    if(!strncmp(name, "stsc", 4))
+    else if(!strncmp(name, "stsc", 4))
     {
-        fseek(fp, box->startPos + 12L, SEEK_SET);
+        fseek(fp, box->pos_start + 12L, SEEK_SET);
         fread(entry_count, sizeof(char), 4, fp);
         entryCount = ChangeCharARToNumber(entry_count, 4);
 
@@ -364,10 +335,10 @@ void DataPareser(FILE* fp, char* name, Box* box)
             printf("first chunk ID: %d, sample per chunk: %d, sample_description:%d",sample[i].first_chunk, sample[i].sample_perchunk, sample[i].sample_description_index);
         }
         box->data->data = sample;
-    };
-    if(!strncmp(name, "stsz", 4))
+    }
+    else if(!strncmp(name, "stsz", 4))
     {
-        fseek(fp, box->startPos + 12L, SEEK_SET);
+        fseek(fp, box->pos_start + 12L, SEEK_SET);
         stsz* sampleMultiple;
         stsz sample;
 
@@ -395,11 +366,11 @@ void DataPareser(FILE* fp, char* name, Box* box)
             printf("%d sample have same size: %d", sample.sample_count, sample.sample_size);
             box->data->data = &sample;  
         }
-    };
-    if(!strncmp(name, "stco", 4))
+    }
+    else if(!strncmp(name, "stco", 4))
     {
-        // printf("box size : %ld\n", box->startPos);
-        fseek(fp, box->startPos + 12L, SEEK_SET);
+        // printf("box size : %ld\n", box->pos_start);
+        fseek(fp, box->pos_start + 12L, SEEK_SET);
         fread(entry_count, sizeof(char), 4L, fp);
         entryCount = ChangeCharARToNumber(entry_count, 4);
         //printf("%d\n", entryCount);
@@ -414,7 +385,7 @@ void DataPareser(FILE* fp, char* name, Box* box)
         }
 
         box->data->data = chunk;
-    };
+    }
 }
 
 void fread_m(void* data, FILE* fp, int isString, size_t length)

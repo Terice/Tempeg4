@@ -1,3 +1,6 @@
+#ifndef INFO_H__
+#define INFO_H__
+
 typedef unsigned long int uint64;
 typedef unsigned int uint32;
 typedef unsigned short int uint16;
@@ -150,3 +153,6 @@ typedef struct stsz
     //list of every sample size
     uint32 sample_size;
 };
+
+
+#endif // INFO_H__

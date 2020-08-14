@@ -1,5 +1,5 @@
-#ifndef MP4INFO_H_
-#define MP4INFO_H_
+#ifndef MPEG_4_H__
+#define MPEG_4_H__
 #include<stdio.h>
 #include<stdlib.h>
 #include<string.h>
@@ -113,4 +113,4 @@ uint64 ChangeCharARToNumber(unsigned char* resource, size_t length);
 
 
 void fread_m(void* data, FILE* fp, int isString, size_t length);
-#endif
+#endif //MPEG_4_H__
