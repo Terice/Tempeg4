@@ -94,6 +94,7 @@ typedef struct avc1
     avcC* avcc;
 }avc1;
 
+Box* ParserContainer_mpeg4(FILE* fp, Box* data);
 
 void ReadInfoIntoBox(FILE* fp,  Box* rootBox);
 void ReadDataIntoBox0(FILE* fp, Box* box);
@@ -104,8 +105,10 @@ char IsFullBox(FILE* fp, size_t boxStartPos, size_t boxSize);
 char IsContainerBox(FILE* fp, size_t boxStartPos, size_t boxSize);
 int ReadBoxInfo(FILE* fp, Box* box);
 
-
-void DataPareser(FILE* fp, char* name, Box* box);
+// delete the box's data by its name
+void DataDeleter(Box* box);
+// decode the box's data by its name
+void DataPareser(FILE* fp, Box* box);
 size_t strlen_b(char* ch);
 
 void RevertBigEndingChar(char* bytesToRevert, size_t length);

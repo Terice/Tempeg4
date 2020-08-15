@@ -3,10 +3,6 @@
 #include<string.h>
 #include"box.h"
 
-// for BoxData, it's function is exec in Box, so dont need to exec it extra
-Data* InitBoxData();
-void DeleteBoxData(Data* data);
-void PrintBoxData(Box* box);
 
 Box* InitBox(char* name, size_t size)
 {
@@ -44,8 +40,8 @@ void DeleteBox(Box* box)
     // printf("%s is freed\n", box->name);
     free(box);
 }
-
-// return the box be inserted
+// fn: insert a copied box into box
+// re: the box be inserted
 // "New" means malloc a new box, 
 // so all data is copied from resource box
 Box* InsertNewBox(Box* box, Box* boxToInsert)
@@ -59,6 +55,8 @@ Box* InsertNewBox(Box* box, Box* boxToInsert)
     //printf("----box insert: %s to %s\n", box->name, boxToInsert->name);
     return tmp;
 }
+// fn: insert the exist pointer of box
+// re: the box be inserted
 // "Exist" means just add the pointer into the tree
 // so shouldn't edit the resource box in other way
 Box* InsertExistBox(Box* box, Box* boxToInsert)
@@ -85,12 +83,17 @@ void ClearUpBox(Box* box)
 //print all box infomation
 void PrintBox(Box* box)
 {
-    char depth;
+    //\e[31;1m[OK]\e[0m
+    int depth;
     if(box != NULL)
     {
         depth = box->depth;
         while(depth--){printf("\t");}
-        printf("name:%4s pos_start:%10ld size:%10ld ", box->name, box->pos_start, box->size);
+#ifdef LINUX_COLORED_TERMINAL
+        printf("name:%4s pos_start:\e[31;1m0x%-8x\e[0m size:\e[31;1m%10ld\e[0m ", box->name, box->pos_start, box->size);
+#else
+        printf("name:%4s pos_start:0x%-8x size:%10ld", box->name, box->pos_start, box->size);
+#endif
         PrintBoxData(box);
         printf("\n");
         if(box->l_child != NULL) PrintBox(box->l_child);
@@ -221,13 +224,26 @@ void DeleteBoxData(Data* data)
     //printf("   and data is freed\n");
     free(data);
 }
+
+// print version and flags
 void PrintBoxData(Box* box)
 {
     if(box != NULL)
     {
-        if(box->data != NULL && box->data->data != NULL)
+        if(box->data != NULL)
         {
             printf("versiong: %d, flags: %x %x %x", box->data->version, box->data->flags[0],box->data->flags[1],box->data->flags[2]);
         }
+    }
+}
+
+int TraverseBox(Box* root, void (*Operation)(Box* b))
+{
+    if(root == NULL) return -1;
+    else
+    {
+        if(root->r_broth != NULL) TraverseBox(root->r_broth, Operation);
+        if(root->l_child != NULL) TraverseBox(root->l_child, Operation);
+        Operation(root);
     }
 }

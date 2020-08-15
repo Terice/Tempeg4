@@ -23,17 +23,11 @@ int main(int argc, char* argv[])
         printf("file: %s \n", argv[1]);
     }
     
-    
-    fseek(fp, 0L, SEEK_END);
-    mp4Box = InitBox("mp4f", ftell(fp));
-    rewind(fp);
 
-    ReadInfoIntoBox(fp, mp4Box);
-    ReadDataIntoBox(fp, mp4Box);
-
-    PrintBox(mp4Box);
-
+    mp4Box = InitBox(NULL, 0);
+    ParserContainer_mpeg4(fp, mp4Box);
     DeleteBox(mp4Box);
+
     fclose(fp);
 
     return 0;
