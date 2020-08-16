@@ -46,7 +46,16 @@ typedef struct stco
     
 }stco;
 
-
+typedef struct SPS__
+{
+    uint16 length;
+    unsigned char* data;//length = 8*numberofSPSsets
+}SPS;
+typedef struct PPS__
+{
+    uint16 length;
+    unsigned char* data;//length = 8*numberofPPSsets
+}PPS;
 
 typedef struct avcC
 {
@@ -56,17 +65,9 @@ typedef struct avcC
     unsigned char AVCLevelIndication;
     unsigned char lengthSizeMinusOne;
     unsigned char numOfSequenceParametersSets;
-    struct SPS
-    {
-        uint16 sPSLength;
-        unsigned char* sPSNALUnit;//length = 8*numberofSPSsets
-    }sPS;
+    SPS sPS;
     unsigned char numOfPictureParametersSets;
-    struct PPS
-    {
-        uint16 pPSLength;
-        unsigned char* pPSNALUnit;//length = 8*numberofPPSsets
-    }pPS;
+    PPS pPS;
 }avcC;
 typedef struct avc1
 {
@@ -94,6 +95,7 @@ typedef struct avc1
     avcC* avcc;
 }avc1;
 
+int DataWriter_mpeg4_h264(FILE* fp_in, Box* data, int ID_trak, FILE* fp_out);
 Box* ParserContainer_mpeg4(FILE* fp, Box* data);
 
 void ReadInfoIntoBox(FILE* fp,  Box* rootBox);
@@ -108,12 +110,12 @@ int ReadBoxInfo(FILE* fp, Box* box);
 // delete the box's data by its name
 void DataDeleter(Box* box);
 // decode the box's data by its name
-void DataPareser(FILE* fp, Box* box);
+void DataPareser(FILE* fp, Box* box, Data* data);
 size_t strlen_b(char* ch);
 
 void RevertBigEndingChar(char* bytesToRevert, size_t length);
 uint64 ChangeCharARToNumber(unsigned char* resource, size_t length);
 
-
+// read data of length's char
 void fread_m(void* data, FILE* fp, int isString, size_t length);
 #endif //MPEG_4_H__

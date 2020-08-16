@@ -5,14 +5,6 @@ typedef unsigned long int uint64;
 typedef unsigned int uint32;
 typedef unsigned short int uint16;
 
-typedef union data
-{
-    uint32 u32;
-    uint16 u16;
-    uint64 u64;
-}Data;
-
-
 typedef struct mvhd
 {
     unsigned char version = 0;//1

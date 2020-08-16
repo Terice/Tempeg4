@@ -123,23 +123,52 @@ Box* FindBoxLink(char* name, Box* box, Box* boxToReturn)
     return tmp;
 }
 
-Box* FindBox0(char* name, Box* box)
+Box* FindBox0(char* name, Box* box, Box* result)
 {
-    Box* result;
-    Box* tmp;
-    tmp = box;
-    if(tmp->l_child != NULL && strncmp(tmp->name, name, 4)) FindBox(name, tmp->l_child, result);
-    if(tmp->r_broth != NULL && strncmp(tmp->name, name, 4)) FindBox(name, tmp->r_broth, result);
 
-    if(!strncmp(tmp->name, name, 4L)) result = tmp;
-    
+    if(!strncmp(box->name, name, 4L)) result = box;
+
+    if(result == NULL)
+    {
+        if(box->l_child != NULL) result = FindBox0(name, box->l_child, result);
+        if(box->r_broth != NULL) result = FindBox0(name, box->r_broth, result);
+    }
+
     return result;
 }
-void FindBox(char* name, Box* box, Box* result)
+Box* FindBox(char* name, Box* box)
 {
-    result = FindBox0(name, box);
-}
+    Box* re;
 
+    re = NULL;
+    return FindBox0(name, box, re);
+}
+int FindBoxs0(char* name, Box* box, Box* result[], int* i, int length)
+{
+    int re;
+
+    re = 0;
+    if(!strncmp(box->name , name, 4L)) 
+    {
+        if(*i >= length)
+        {
+            printf("result length is not enough\n");
+            return -1;
+        }; 
+        result[*i] = box; 
+        (*i)++;
+    }
+    if(box->l_child != NULL) FindBoxs0(name, box->l_child, result, i, length);
+    if(box->r_broth != NULL) FindBoxs0(name, box->r_broth, result, i, length);
+    return re = (*i) >= length ? -1:(*i);
+}
+int FindBoxs(char* name, Box* box, Box* result[], int length)
+{
+    int i;
+
+    i = 0;
+    return FindBoxs0(name, box, result, &i, length);
+}
 
 //find the first leaf box wrap in the "box"
 Box* FindLastBox(Box* box)
@@ -242,8 +271,8 @@ int TraverseBox(Box* root, void (*Operation)(Box* b))
     if(root == NULL) return -1;
     else
     {
-        if(root->r_broth != NULL) TraverseBox(root->r_broth, Operation);
         if(root->l_child != NULL) TraverseBox(root->l_child, Operation);
+        if(root->r_broth != NULL) TraverseBox(root->r_broth, Operation);
         Operation(root);
     }
 }

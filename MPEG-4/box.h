@@ -11,6 +11,7 @@ typedef struct FullBoxData
     unsigned char version;
     unsigned char flags[3];
     void* data;
+    int entrycount;
 }Data;
 typedef struct box Box;
 struct box
@@ -44,9 +45,11 @@ Box* InsertExistBox(Box* box, Box* boxToInsert);
 void ConnectTwoBox(Box* b1, Box* b2, char* mode);
 
 void PrintBox(Box* box);
-//find box with its name in a big box
-void FindBox(char* name, Box* box, Box* result);
+
 Box* FindBoxLink(char* name, Box* box, Box* boxToReturn);
+//find box with its name in a big box
+Box* FindBox(char* name, Box* box);
+int FindBoxs(char* name, Box* box, Box* result[], int length);
 
 //find the last box in the "box"
 Box* FindLastBox(Box* box);

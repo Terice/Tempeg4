@@ -5,12 +5,12 @@ BIN=./
 OBJ=./obj
 target=a
 
-LINUX_COLORED_TERMINAL:=n
+LINUX_COLORED_TERMINAL:=y
 ifeq ( $(LINUX_COLORED_TERMINAL) , y )
 CFLAGS+=-DLINUX_COLORED_TERMINAL
 endif
 
-$(target):main.c $(OBJ)/box.o $(OBJ)/mpeg-4.o
+$(target):main.c $(OBJ)/box.o $(OBJ)/mpeg-4.o $(OBJ)/fn.o
 	@echo "complie:start with the files"
 	@$(CC) -g $^ -o $@ $(LDFLAGS)
 	@echo "complie:end"
