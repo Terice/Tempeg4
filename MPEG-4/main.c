@@ -3,32 +3,25 @@
 #include<string.h>
 
 #include"mpeg-4.h"
-#include"box.h"
 
+
+#define FILEPATH      "fox.mp4"
+#define FILEPATH_OUT  "trak"
 
 int main(int argc, char* argv[])
 {
     FILE* fp, *fp_out;
-    Box* mp4Box; 
-#ifndef FILEPATH
-    #define FILEPATH argv[0]
-    if(argc != 2) {printf("Usage: %s filename\n", argv[0]); return -1;}
-#endif
-    if((fp = fopen(FILEPATH, "rb")) == NULL) 
-    {
-        printf("cant open file: %s\n", argv[1]);
-        return -1;
-    }
-    else
-    {
-        printf("file: %s \n", argv[1]);
-    }
+    mpeg4* fmpeg4; 
+    int option;
     
-    fp_out = fopen("trak.file", "w");
-    mp4Box = InitBox(NULL, 0);
-    ParserContainer_mpeg4(fp, mp4Box);
-    DataWriter_mpeg4_h264(fp, mp4Box, 0, fp_out);
-    DeleteBox(mp4Box);
+    if((fp = fopen(FILEPATH, "r")) == NULL){printf("cant open file: %s\n", FILEPATH);return -1;}
+    if((fp_out = fopen(FILEPATH_OUT, "w")) == NULL){printf("cant open file: %s\n", FILEPATH_OUT);return -1;}
+    
+    fmpeg4 = InitMpeg4();
+    ParserContainer_mpeg4(fp, fmpeg4);
+    DataWriter_mpeg4_h264(fp, fmpeg4, 0, fp_out);
+    DeleteMpeg4(fmpeg4);
+    
 
     fclose(fp);
 

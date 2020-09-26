@@ -2,9 +2,6 @@
 #define BOX_H_
 #include<stdio.h>
 
-// #ifndef LINUX_TERMINAL
-// #define LINUX_TERMINAL
-// #endif
 
 typedef struct FullBoxData
 {

@@ -5,18 +5,14 @@ BIN=./
 OBJ=./obj
 target=a
 
-LINUX_COLORED_TERMINAL:=y
-ifeq ( $(LINUX_COLORED_TERMINAL) , y )
-CFLAGS+=-DLINUX_COLORED_TERMINAL
-endif
 
-$(target):main.c $(OBJ)/box.o $(OBJ)/mpeg-4.o $(OBJ)/fn.o
-	@echo "complie:start with the files"
+endif
+$(target):main.c $(OBJ)/box.o $(OBJ)/mpeg-4.o $(OBJ)/fn.o $(OBJ)/tree.o
 	@$(CC) -g $^ -o $@ $(LDFLAGS)
 	@echo "complie:end"
 $(OBJ)/%.o:%.c
 	@if [ ! -d $(OBJ) ]; then mkdir -p $(OBJ); fi;
-	@$(CC) $(CFLAGS) $^ -o $@
+	@$(CC) $^ -o $@
 clean:
 	@if [ -d $(OBJ) ]; then rm $(OBJ)/*.o; fi;
 	@rm $(BIN)/$(target)

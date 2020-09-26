@@ -5,42 +5,72 @@
 #include<string.h>
 #include"box.h"
 
+#include "tree.h"
+
  
 typedef unsigned long int uint64;
 typedef unsigned int uint32;
 typedef unsigned short int uint16;
 
-typedef struct stsd
+
+
+// box praser environment
+typedef struct box_parser_environment__
+{
+    tree_node* tn_trak[10];
+    int        info_trak[10];
+    int index;
+    int index_raw;
+}box_parser_environment;
+
+typedef struct mpeg4__
+{
+    tree* structure;
+    box_parser_environment bpe;
+}mpeg4;
+
+
+mpeg4* InitMpeg4();
+void DeleteMpeg4(mpeg4* m);
+
+// write the ID_trak from fp_in's box to fp_out
+int DataWriter_mpeg4_h264(FILE* fp_in, mpeg4* m, int trak, FILE* fp_out);
+// Constructure the box's tree from fp
+int ParserContainer_mpeg4(FILE* fp, mpeg4* m);
+
+
+
+typedef struct stsd__
 {
     uint32 sample_count;
 }stsd;
-typedef struct stts
+typedef struct stts__
 {
     uint32 sample_count;
     uint32 sample_delta;
 }stts;
-typedef struct stss
+typedef struct stss__
 {
     uint32 sample_number;
 }stss;
-typedef struct ctts
+typedef struct ctts__
 {
     uint32 sample_count;
     uint32 sample_offset;
 }ctts;
-typedef struct stsc
+typedef struct stsc__
 {
     uint32 first_chunk;
     uint32 sample_perchunk;
     uint32 sample_description_index;
 }stsc;
-typedef struct stsz
+typedef struct stsz__
 {
     uint32 sample_size;
     uint32 sample_count;
 
 }stsz;
-typedef struct stco
+typedef struct stco__
 {
     uint32 chunk_offset;
     
@@ -57,7 +87,7 @@ typedef struct PPS__
     unsigned char* data;//length = 8*numberofPPSsets
 }PPS;
 
-typedef struct avcC
+typedef struct avcC__
 {
     unsigned char configuration;//1
     unsigned char avcProfileIndication;
@@ -69,7 +99,7 @@ typedef struct avcC
     unsigned char numOfPictureParametersSets;
     PPS pPS;
 }avcC;
-typedef struct avc1
+typedef struct avc1__
 {
     unsigned char reserved[6];
     uint16 data_reference_index;
@@ -95,22 +125,12 @@ typedef struct avc1
     avcC* avcc;
 }avc1;
 
-int DataWriter_mpeg4_h264(FILE* fp_in, Box* data, int ID_trak, FILE* fp_out);
-Box* ParserContainer_mpeg4(FILE* fp, Box* data);
 
-void ReadInfoIntoBox(FILE* fp,  Box* rootBox);
-void ReadDataIntoBox0(FILE* fp, Box* box);
-void ReadDataIntoBox(FILE* fp, Box* box);
 
-char IsFullBox(FILE* fp, size_t boxStartPos, size_t boxSize);
-//this is to analyse whether it is a container box
-char IsContainerBox(FILE* fp, size_t boxStartPos, size_t boxSize);
-int ReadBoxInfo(FILE* fp, Box* box);
 
-// delete the box's data by its name
-void DataDeleter(Box* box);
-// decode the box's data by its name
-void DataPareser(FILE* fp, Box* box, Data* data);
+
+
+
 size_t strlen_b(char* ch);
 
 void RevertBigEndingChar(char* bytesToRevert, size_t length);
