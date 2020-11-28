@@ -1,9 +1,9 @@
 #ifndef MPEG_4_H__
 #define MPEG_4_H__
-#include<stdio.h>
-#include<stdlib.h>
-#include<string.h>
-#include"box.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include "box.h"
 
 #include "tree.h"
 
@@ -17,16 +17,16 @@ typedef unsigned short int uint16;
 // box praser environment
 typedef struct box_parser_environment__
 {
-    tree_node* tn_trak[10];
-    int        info_trak[10];
+    tree_node* tn_trak[10];   // to store the all trak node
+    int        info_trak[10]; // its index
     int index;
-    int index_raw;
+    int index_raw;            
 }box_parser_environment;
 
 typedef struct mpeg4__
 {
-    tree* structure;
-    box_parser_environment bpe;
+    tree* structure;          // the structure tree of the mp4 file 
+    box_parser_environment bpe;// some info while extract the trak bytes
 }mpeg4;
 
 

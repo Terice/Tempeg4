@@ -10,7 +10,7 @@ typedef struct box_data__       // common box's data
 {
     unsigned char version;      //
     unsigned char flags[3];
-    int entrycount;
+    int entrycount;             // the count of the entity of the data (just some box)
     void* full_data;            // "full box" 's data
 }box_data;
 typedef struct box__
@@ -46,7 +46,9 @@ void DeleteTree(tree* t);
 void Tree_FindItem(tree* t);
 // return the node that be inserted
 tree_node* Tree_InsertItem(tree_node* tn, tree_elem* item, bool isChild);
+// first root
 void Tree_Traverse_ROOT1(tree* t, bool(*f)(tree_node* n));
+// middle root
 void Tree_Traverse_ROOT2(tree* t, bool(*f)(tree_node* n));
 
 
@@ -66,26 +68,7 @@ void FindNodeParent(    tree* t, tree_node* tofind, \
                         tree_node** tn_pre\
 );
 
-// it will change the value of "N"
-#define TraverseNode(N, f) \
-seqstack* s = InitSeqStack();\
-Push(s, N);\
-N = N->l_child;\
-while(!IsEmpty(s))\
-{\
-    if(N)\
-    {\
-        Push(s, N);\
-        f;\
-        N = N->l_child;\
-    }\
-    else\
-    {\
-        Pop(s, &N);\
-        N = N->r_brother;\
-    }\
-}\
-DeleteSeqStack(s);
+
 
 //---------------------------------------------------------------
 // seqstack  for treenode
@@ -107,5 +90,24 @@ bool IsEmpty(seqstack* s);
 bool IsFull(seqstack* s);
 void SetZero(seqstack* s);
 //---------------------------------------------------------------
-
+// it will change the value of "N"
+#define TraverseNode(N, f) \
+seqstack* s = InitSeqStack();\
+Push(s, N);\
+N = N->l_child;\
+while(!IsEmpty(s))\
+{\
+    if(N)\
+    {\
+        Push(s, N);\
+        f;\
+        N = N->l_child;\
+    }\
+    else\
+    {\
+        Pop(s, &N);\
+        N = N->r_brother;\
+    }\
+}\
+DeleteSeqStack(s);
 #endif

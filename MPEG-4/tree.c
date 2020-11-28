@@ -50,7 +50,9 @@ tree_node* Tree_InsertItem(tree_node* tn, tree_elem* item, bool isChild)
 // -----------------------------------------------
 
 // the below is the function to operation the node
-
+// in tree t, find the node "tofind" 
+// the finded condition: tofind & everynode
+// return a tree_node* : modified by the tree_node**
 void FindNode(  tree* t, tree_node* tofind,\
                 bool (*f)(tree_node* tofind, tree_node* cur_visiting), \
                 tree_node** finded\

@@ -5,7 +5,7 @@
 #include"mpeg-4.h"
 
 
-#define FILEPATH      "fox.mp4"
+#define FILEPATH_IN   "fox.mp4"
 #define FILEPATH_OUT  "trak"
 
 int main(int argc, char* argv[])
@@ -14,7 +14,7 @@ int main(int argc, char* argv[])
     mpeg4* fmpeg4; 
     int option;
     
-    if((fp = fopen(FILEPATH, "r")) == NULL){printf("cant open file: %s\n", FILEPATH);return -1;}
+    if((fp = fopen(FILEPATH_IN, "r")) == NULL)     {printf("cant open file: %s\n", FILEPATH_IN );return -1;}
     if((fp_out = fopen(FILEPATH_OUT, "w")) == NULL){printf("cant open file: %s\n", FILEPATH_OUT);return -1;}
     
     fmpeg4 = InitMpeg4();

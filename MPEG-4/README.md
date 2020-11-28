@@ -3,6 +3,7 @@
 a simple parser of MPEG-4's structure & data writer
 
 
+
 # input & output
 input : a file which is made in MPEG-4 container.  
 output(terminal): the structure of this file that organize by "tree".  

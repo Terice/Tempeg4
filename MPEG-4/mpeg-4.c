@@ -3,8 +3,9 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "box.h"
+
 #include "fn.h"
+
 
 mpeg4* InitMpeg4()
 {
@@ -27,6 +28,7 @@ void DataDeleter(Box* box);
 // decode the box's data by its name
 void DataPareser(FILE* fp, tree_node* tn, box_parser_environment* bpe);
 
+// return t & c 's name is equal ?
 bool FindTreeNode_ItemNameEqual(tree_node* t, tree_node* c)
 {
     return !strncmp(t->item.name, c->item.name, 4);
@@ -37,6 +39,8 @@ void ReadInfoIntoTree(FILE* fp, tree* t, box_parser_environment* bpe);
 void ReadDataIntoTree(FILE* fp, tree* t, box_parser_environment* bpe);
 int IsContainerBox(FILE* fp, box* b); // judge box follow the file "fp"
 
+// find all the "trak"
+// confirm the type of the "trak"
 static void PreParse(mpeg4* m)
 {
     tree* t;box_parser_environment* bpe;
@@ -47,17 +51,24 @@ static void PreParse(mpeg4* m)
 
     tree_node stand; tree_node* tn_find;
     tree_node* tn_tmp;
-    // find the trak pointers
+    // find the all "trak" box's pointers
     strncpy(stand.item.name,"trak", 4);
+    // stand is used to store a name "trak"
+    // tn_find is used as the finded node
     FindNode(t, &stand, FindTreeNode_ItemNameEqual, &tn_find);
+
+    // loop find the "trak" node
     i = bpe->index;
     do
     {
         bpe->tn_trak[i] = tn_find;
-        i = ++bpe->index;
-    } while ((tn_find = tn_find->r_brother )&& !strncmp(tn_find->item.name, "trak", 4));
+        i = ++bpe->index; // record the number of trak
+    } while ((tn_find = tn_find->r_brother ) && !strncmp(tn_find->item.name, "trak", 4));
     strncpy(stand.item.name,"vmhd", 4);
 
+    // loop find every "trak"'s type, and give index to corresponding node
+    // video - 1
+    // audio - 2
     for(i = 0; i < bpe->index; i++)
     {
         tn_tmp = bpe->tn_trak[i];
@@ -66,8 +77,6 @@ static void PreParse(mpeg4* m)
             else if(!strncmp(tn_tmp->item.name, "smhd", 4)) bpe->info_trak[i] = 2;
         );
     }
-    
-
 }
 
 bool PrintfTreeNode(tree_node* t)
@@ -102,7 +111,9 @@ int ParserContainer_mpeg4(FILE* fp, mpeg4* m)
     b.size = ftell(fp);b.pos_start = -8L;
     rewind(fp);
     Tree_InsertItem(t->head, &b, true);     // insert the "FILE"
+
     // construct the tree structure of the file "fp"
+    // mainly read "size" & "start position"
     ReadInfoIntoTree(fp, t, bpe);
 
     // get some info: trak pointer and trak info
@@ -116,6 +127,8 @@ int ParserContainer_mpeg4(FILE* fp, mpeg4* m)
     return 0;
 }
 
+// already know the index of the "sample"
+// calculate the file position and size of the "sample"
 static int GetSample(   stco* chunkoffset,  int length_stco,\
                         stsz* samplesize,   int length_stsz,\
                         stsc* sampletochunk,int length_stsc,\
@@ -129,62 +142,72 @@ static int GetSample(   stco* chunkoffset,  int length_stco,\
     ID_chunk = -1;
     i = 0;
     index_ChunkTable = 0;
-
-    // i is the count of all ID_chunk !number! of chunk's sample summary(not index)
+    // calc the index of "chunk"
+    // "i" is the all count of the sample of before chunk
     do
     {
-        i += sampletochunk[index_ChunkTable].sample_perchunk;
         ID_chunk++;
-
         // chunk ID is larger than or equal to next change chunk's sample count 
         // then change the calc index
         // no case of "overflow" because after size use the latest value
        
         // stsc.first_chunk start with "1" instead of "0"
-        if(index_ChunkTable < length_stsc-1 && ID_chunk+1 >= sampletochunk[index_ChunkTable+1].first_chunk)
-        {                           //-1 make index_ChunkTable always avaiable
+        if(index_ChunkTable < length_stsc-1 && ID_chunk == sampletochunk[index_ChunkTable+1].first_chunk-1)
+        {                           //   ^ -1 make index_ChunkTable always avaiable
             index_ChunkTable++;
         }
+        i += sampletochunk[index_ChunkTable].sample_perchunk;
+
     }while(i < ID_sample + 1);
+        
+
     if(ID_chunk > length_stco) printf("GetSample: stco overflow\n");
     //get the file offset(chunk offset)
     *re_spos = chunkoffset[ID_chunk].chunk_offset;
-    if(ID_chunk > length_stco) printf("GetSample: stsz overflow\n");
+    
 
+    // calc the index of the "sample"
     // get the sample's size 
     // i is the count of all ID_chunk !number! of chunk's sample summary(not index)
-    sample_id_inchunk = sampletochunk[index_ChunkTable].sample_perchunk - (i - ID_sample); 
-    index_in_chunk = 0;
+    sample_id_inchunk = sampletochunk[index_ChunkTable].sample_perchunk - (i - (ID_sample+1) ) - 1;  
+    index_in_chunk = 0; // index add value
     before_sample_size = 0;
     while (index_in_chunk < sample_id_inchunk)
     {
-        /* eg: calc 7th sample's size in chunk 4
-        sample id | chunk id
-             _____             samples    sample size
-            0_____  chunk 1       1        size[1]
-            1_____  chunk 2       
-            2
-            3       chunk 3       3
-            4_____
-            5                              size[6]                          0
-            6       chunk 4                size[7]                          1
-            7_____                         size[8]        sample_id_inchunk 2
-
-            size[7 - 2 + 0 + 1] + size[7 - 2 + 1 + 1]
-        */
         sample_size = samplesize[0].sample_size == 0?\
             samplesize[(ID_sample - sample_id_inchunk + index_in_chunk)+1].sample_size:\
             samplesize[0].sample_size;
         before_sample_size += sample_size;
         index_in_chunk++;
     }
+
     *re_spos += before_sample_size;
     *re_size  = samplesize[0].sample_size == 0?\
         samplesize[ID_sample+1].sample_size:\
         samplesize[0].sample_size;
+    
+    return 1;
+    /* 
+    eg: calc 7th sample's size and start-position in chunk 4
+    sample id | chunk id
+        ._____             samples    sample size
+        0_____  chunk 1       1        size[1]
+        1_____  chunk 2       
+        2
+        3       chunk 3       3
+        4_____
+        5                              size[6]                          0
+        6       chunk 4                size[7]                          1
+        7_____                         size[8]        sample_id_inchunk 2
+
+        size[7 - 2 + 0 + 1] + size[7 - 2 + 1 + 1]
+    */
+    
 }
 const unsigned char h264_nal_header[4] = {0,0,0,1};
-static int WriteSample( FILE* fp_in, long sample_start_pos, long sample_size, FILE* fp_out,\
+static int WriteSample( FILE* fp_in, \
+                        long sample_start_pos, long sample_size, \
+                        FILE* fp_out,\
                         SPS* sps, PPS* pps\
 )
 {
@@ -194,14 +217,21 @@ static int WriteSample( FILE* fp_in, long sample_start_pos, long sample_size, FI
 
     size_writen = 0;
     fseek(fp_in, sample_start_pos, SEEK_SET);
+    printf("write a sample, start : 0x%x, size : %8d\n", sample_start_pos, sample_size);
+
+    // there maybe the case that a "sample" have more than 1 "NAL unit"
+    // so write until @ end of sample
     while (size_writen < sample_size)
     {
         fread(&data_tmp, sizeof(char), 4, fp_in);
         size_current = ChangeCharARToNumber(data_tmp, 4);
-        if(size_current > sample_size) return -1;
+        printf("a nal size: %5d", size_current);
+        if(size_current > sample_size) {printf("  x\n"); return -1;}
+        else {printf("\n");}
+
         // write the h264 NAL header(0x 00 00 01)
         fwrite(h264_nal_header, sizeof(char), 4, fp_out);
-
+        // if it is an "IDR" nal than insert the sps and pps
         if(fgetc(fp_in) == 0x65) 
         {
             // insert SPS
@@ -216,6 +246,7 @@ static int WriteSample( FILE* fp_in, long sample_start_pos, long sample_size, FI
 
         f_WriteBytes(fp_in, ftell(fp_in), size_current, fp_out);
         size_writen += size_current+4;
+        printf("write a nal\n");
     }
     return 0;
 }
@@ -277,11 +308,12 @@ int DataWriter_mpeg4_h264(FILE* fp_in, mpeg4* m, int trak_id, FILE* fp_out)
             i,\
             &pos_start, &size\
         );
+        printf("sample index: %5d,start:  0x%x, write bytes: %10x\n", i, pos_start, size);
         WriteSample(fp_in, pos_start, size, fp_out, sps, pps);
-        printf("sample index: %5d,start:%10x, write bytes: %10x\n", i, pos_start, size);
         i++;
     }
 }
+// no longer used
 // read the box data into box
 // static void ReadDataIntoBox0(FILE* fp, tree* t)
 // {
@@ -309,10 +341,11 @@ int DataWriter_mpeg4_h264(FILE* fp_in, mpeg4* m, int trak_id, FILE* fp_out)
     //     DataPareser(fp, b, data);
     //     b->data = data;
     // }
-//     if(b->r_broth != NULL) ReadDataIntoBox0(fp, b->r_broth);
-//     if(b->l_child != NULL) ReadDataIntoBox0(fp, b->l_child);
-
+    //     if(b->r_broth != NULL) ReadDataIntoBox0(fp, b->r_broth);
+    //     if(b->l_child != NULL) ReadDataIntoBox0(fp, b->l_child);
 // }
+
+// read data into the mp4 tree
 void ReadDataIntoTree(FILE* fp, tree* t, box_parser_environment* bpe)
 {
     tree_node* tn;
@@ -324,8 +357,8 @@ void ReadDataIntoTree(FILE* fp, tree* t, box_parser_environment* bpe)
             b = &tn->item;
             // if a b dont have child b, it is calc as a "fullbox"
             if(!strncmp(b->name, "trak", 4))
-            { 
-                if(bpe->info_trak[bpe->index_raw] == 1)
+            {
+                if(bpe->info_trak[bpe->index_raw] == 1) //only parse the video "1" trak
                 bpe->info_trak[bpe->index_raw] += 10;
                 else
                     bpe->index_raw++;
@@ -383,7 +416,6 @@ void ReadInfoIntoTree(FILE* fp, tree* t, box_parser_environment* bpe)
             }
         } while (b.pos_start + b.size < edge);
     }
-    
     DeleteSeqStack(s);
 }
 
@@ -550,12 +582,10 @@ void DataPareser(FILE* fp, tree_node* tn, box_parser_environment* bpe)
     fseek(fp, b->pos_start + 12L, SEEK_SET);
 
 
-    // only whenn trak need parse, then parse it
+    // only when trak need parse, then parse it
     if(bpe->info_trak[bpe->index_raw] <= 10) return;
     if(!strncmp(name, "stsd", 4))
     {
-        // unsigned char ch[32] ;
-        // fread(&ch, sizeof(char), 32, fp);
         avcC* data_avcC = (avcC*)malloc(sizeof(avcC));
         avc1* data_avc1 = (avc1*)malloc(sizeof(avc1));
         box_data* bdata_avc1 = (box_data*)malloc(sizeof(box_data));
@@ -572,7 +602,9 @@ void DataPareser(FILE* fp, tree_node* tn, box_parser_environment* bpe)
         stsd* sample = (stsd*)malloc(sizeof(stsd)*entryCount);
         sample->sample_count = entryCount;
 
-
+        //--------------------------------------------------------------------
+        //  avc1
+        //-------------------------
         // read avc1 box base info
         ReadBoxInfo(fp, &btmp);
         // insert avc1 into stsd
@@ -594,8 +626,11 @@ void DataPareser(FILE* fp, tree_node* tn, box_parser_environment* bpe)
         fread_m(&data_avc1->compress_name          , fp, 0, 32);
         fread_m(&data_avc1->bit_depth              , fp, 0, 2);
         fread_m(&data_avc1->pre_defined_2          , fp, 0, 2);
+        //--------------------------------------------------------------------
         
-        
+        //--------------------------------------------------------------------
+        //  avcC
+        //-------------------------
         // read avcC's size
         ReadBoxInfo(fp, &btmp);
         tn = Tree_InsertItem(tn, &btmp, true);
@@ -608,29 +643,29 @@ void DataPareser(FILE* fp, tree_node* tn, box_parser_environment* bpe)
         fread_m(&data_avcC->profile_compatibility      , fp, 0, 1);
         fread_m(&data_avcC->lengthSizeMinusOne         , fp, 0, 1);
         fread_m(&data_avcC->AVCLevelIndication         , fp, 0, 1);
+        //--------------------------------------------------------------------
         
         
         // read SPS
-        // printf("\nnumber of SPS sets: %8x", data_avcC->numOfSequenceParametersSets);
         fread_m(&data_avcC->numOfSequenceParametersSets, fp, 0, 1);
         data_avcC->numOfSequenceParametersSets &= (0x1f);
+        printf("number of SPS sets: %08d", data_avcC->numOfSequenceParametersSets);
         for (size_t i = 0; i < data_avcC->numOfSequenceParametersSets; i++)
         {
             fread_m(&data_avcC->sPS.length, fp, 0, 2);
-            // printf("data_avcC->sPS.length %08x\n", data_avcC->sPS.length);
             data_avcC->sPS.data = (char*)malloc(data_avcC->sPS.length * data_avcC->numOfSequenceParametersSets);
             fread(data_avcC->sPS.data, sizeof(char), data_avcC->sPS.length * data_avcC->numOfSequenceParametersSets, fp);
-            // printf("%x ", data_avcC->sPS.data[i]);
+            printf("    first char is : [%2x]\n", data_avcC->sPS.data[i]);
         }
         // read PPS
-        // printf("\nnumber of PPS sets: %d", data_avcC->numOfPictureParametersSets);
         fread_m(&data_avcC->numOfPictureParametersSets, fp, 0, 1);
+        printf("number of PPS sets: %08d", data_avcC->numOfPictureParametersSets);
         for (size_t i = 0; i < data_avcC->numOfPictureParametersSets; i++)
         {
             fread_m(&data_avcC->pPS.length, fp, 0, 2);
             data_avcC->pPS.data = (char*)malloc(data_avcC->pPS.length * data_avcC->numOfPictureParametersSets);
             fread(data_avcC->pPS.data, sizeof(char), data_avcC->pPS.length * data_avcC->numOfPictureParametersSets, fp);
-            // printf("%x ", data_avcC->pPS.data[i]);
+            printf("    first char is : [%2x]\n", data_avcC->pPS.data[i]);
         }
     }
     // time to sample
@@ -702,7 +737,7 @@ void DataPareser(FILE* fp, tree_node* tn, box_parser_environment* bpe)
             sample[i].sample_perchunk = ChangeCharARToNumber(tmp, 4);
             fread(tmp, sizeof(char), 4L, fp);
             sample[i].sample_description_index = ChangeCharARToNumber(tmp, 4);
-            // printf("stsc: first chunk ID: %d, sample per chunk: %d, sample_description:%d\n",\
+            printf("stsc: first chunk ID: %d, sample per chunk: %d, sample_description:%d\n",\
             sample[i].first_chunk, \
             sample[i].sample_perchunk, \
             sample[i].sample_description_index\
@@ -710,12 +745,11 @@ void DataPareser(FILE* fp, tree_node* tn, box_parser_environment* bpe)
         }
         b->common_data->full_data = sample;
     }
-    // 
     // all sample count and the size of every sample
     else if(!strncmp(name, "stsz", 4))
     {
-        stsz* sampleMultiple;
-        stsz sample;
+        stsz* sampleMultiple; // the result
+        stsz sample;          // tmp stsz to store info
         
         // sample size 
         fread(tmp, sizeof(char), 4L, fp);
@@ -729,6 +763,7 @@ void DataPareser(FILE* fp, tree_node* tn, box_parser_environment* bpe)
         // every sampe have different size 
         if(sample.sample_size == 0)
         {
+            printf("stsz: %d sample have different size: %d\n", sample.sample_count, sample.sample_size);
             sampleMultiple = (stsz*)malloc(sizeof(stsz)*(sample.sample_count + 1));
             sampleMultiple[0].sample_count = sample.sample_count;
             sampleMultiple[0].sample_size = sample.sample_size;
@@ -742,7 +777,7 @@ void DataPareser(FILE* fp, tree_node* tn, box_parser_environment* bpe)
         }
         else // all sample have the same size
         {
-            // printf("stsz: %d sample have same size: %d\n", sample.sample_count, sample.sample_size);
+            printf("stsz: %d sample have same size: %d\n", sample.sample_count, sample.sample_size);
             sampleMultiple = (stsz*)malloc(sizeof(stsz));
             sampleMultiple[0].sample_count = sample.sample_count;
             sampleMultiple[0].sample_size = sample.sample_size;
@@ -755,7 +790,7 @@ void DataPareser(FILE* fp, tree_node* tn, box_parser_environment* bpe)
     {
         fread(entry_count, sizeof(char), 4L, fp);
         entryCount = ChangeCharARToNumber(entry_count, 4);
-        // printf("stco: chunk offset list count :%d\n", entryCount);
+        printf("stco: chunk count :%d\n", entryCount);
         stco* chunk = (stco*)malloc(b->size - 16L);
 
         for (size_t i = 0; i < entryCount; i++)
